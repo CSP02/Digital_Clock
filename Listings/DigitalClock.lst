@@ -1,0 +1,224 @@
+A51 MACRO ASSEMBLER  DIGITALCLOCK                                                         07/10/2022 14:05:17 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN .\Objects\DigitalClock.obj
+ASSEMBLER INVOKED BY: D:\Keil\C51\BIN\A51.EXE DigitalClock.asm SET(SMALL) DEBUG PRINT(.\Listings\DigitalClock.lst) OBJEC
+                      T(.\Objects\DigitalClock.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+0000                   1     ORG 0000H
+0000 2100              2     AJMP MAIN
+                       3     
+                       4     ;Main asm code
+0100                   5     ORG 0100H
+0100                   6     MAIN:   
+                       7             ;Setting the initial values for all the registers and defining output ports
+0100 75B000            8                     MOV P3, #00H
+0103 759000            9                     MOV P1, #00H
+                      10                     ;R0 is used to select a display among 4 displays
+0106 7811             11                     MOV R0, #11H
+                      12                     ;R1 to R4 are the displacements for each display respectively starting from
+                              left to right
+0108 7900             13                     MOV R1, #00H
+010A 7A08             14                     MOV R2, #08H
+010C 7B05             15                     MOV R3, #05H
+010E 7C07             16                     MOV R4, #07H
+                      17                     ;R5 register determines if its AM or PM with a bot (h led)
+0110 7D00             18                     MOV R5, #00H
+                      19             ;Loading the initial address of the data that has to be sent to the 7 segment displ
+                             ay
+0112                  20     LOAD: 
+0112 901000           21                     MOV DPTR, #1000H
+0115                  22     START:
+                      23                     ;One minute delay
+0115 7E04             24                     MOV R6, #04H
+0117 7FBF             25                     MINUTE: MOV R7, #191D
+0119 3144             26                     SECOND: ACALL DELAY
+011B DFFC             27                     DJNZ R7, SECOND
+011D DEF8             28                     DJNZ R6, MINUTE
+011F 0C               29                     INC R4 ;Increasing R4 by one for every 1 second
+0120 BC0AF2           30                     CJNE R4, #0AH, START ;Checking if 10 seconds (0 to 9) are completed if yes 
+                             then increase the R3 and reset R4
+0123 7C00             31                     MOV R4, #00H
+0125 0B               32                     INC R3
+                      33                     ;Check if R3 is greater than 5 (because the maximum seconds in an minute is
+                              59 
+                      34                     ;considering form 0)if yes then clear R3 and increase R2
+0126 BB06EC           35                     CJNE R3, #06H, START 
+0129 7B00             36                     MOV R3, #00H
+012B 0A               37                     INC R2
+                      38                     ;As in 12hr clock format the clock will reset to 1:00 after 12:59 so if the
+                             re is '1' in '12' 
+                      39                     ;that means the clock should stop at 12 and next number will be 1 if not it
+                              will count upto 9
+                      40                     ;or else it will count to 2 and then sets the R2 and R1 to 1 and 0 respecti
+                             vely so that it will look like '01'
+012C B90108           41                     CJNE R1, #01H, SKIP 
+012F BA03E3           42                     CJNE R2, #03H, START
+0132 7A01             43                     MOV R2, #01H
+0134 7900             44                     MOV R1, #00H
+                      45                     ;If it crossed '12' that means the clock crossed AM to PM or PM to AM so we
+                              increase R5 for later purpose
+0136 0D               46                     INC R5
+0137                  47     SKIP:   
+                      48                     ;Loop if R1 is not 01 that means its somewhere around 03:xx so R2 can incre
+                             ase upto 9
+A51 MACRO ASSEMBLER  DIGITALCLOCK                                                         07/10/2022 14:05:17 PAGE     2
+
+0137 BA0ADB           49                     CJNE R2, #0AH, START
+013A 7A00             50                     MOV R2, #00H
+013C 09               51                     INC R1
+                      52                     ;Check if R1 crossed 1 and if yes then load 1000 into DPTR and start clock 
+                             from the beginning (because 12 hr format).
+013D B902D5           53                     CJNE R1, #02H, START
+0140 7900             54                     MOV R1, #00H
+0142 80CE             55                     SJMP LOAD
+                      56                     
+                      57                     ;Maximum delay
+0144                  58     DELAY:
+0144 758901           59                     MOV TMOD, #01H
+0147 758C00           60                     MOV TH0, #00H
+014A 758A00           61                     MOV TL0, #00H
+014D D28C             62                     SETB TR0
+014F                  63                     HERE:
+                      64                     ;Load the display and turn on every display with minimum of 0.05s so they w
+                             ill look like they were turned on continuously
+014F 317A             65                             ACALL LOAD4
+0151 3167             66                             ACALL DELAY2
+0153 319B             67                             ACALL LOAD3
+0155 3167             68                             ACALL DELAY2
+0157 31A9             69                             ACALL LOAD2
+0159 3167             70                             ACALL DELAY2
+015B 31B7             71                             ACALL LOAD1
+015D 3167             72                             ACALL DELAY2
+015F 308DED           73                             JNB TF0, HERE
+0162 C28C             74                             CLR TR0
+0164 C28D             75                             CLR TF0
+0166 22               76                     RET
+                      77                     
+                      78                     ;Delay for 0.05s
+0167                  79     DELAY2:
+0167 758910           80                     MOV TMOD, #10H
+016A 758DC3           81                     MOV TH1, #0C3H
+016D 758B50           82                     MOV TL1, #050H
+0170 D28E             83                     SETB TR1
+0172 308FFD           84                     HERE1: JNB TF1, HERE1
+0175 C28E             85                     CLR TR1
+0177 C28F             86                     CLR TF1
+0179 22               87                     RET
+                      88                     
+                      89                     ;Loading and displaying data into different displays
+017A                  90     LOAD4:
+                      91                     ;Checking if its AM or PM if its PM the . at the right most display will be
+                              turned on and its AM it will turn off
+017A E4               92                     CLR A
+017B 75F000           93                     MOV B, #00H
+017E ED               94                     MOV A, R5
+017F 75F002           95                     MOV B, #02H
+0182 84               96                     DIV AB
+0183 E5F0             97                     MOV A, B
+0185 B40005           98                     CJNE A, #00H, CHANGE
+0188 902000           99                     MOV DPTR, #2000H
+018B 8003            100                     JMP SKIP1
+018D 901000          101                     CHANGE: MOV DPTR, #1000H
+0190 E8              102                     SKIP1: MOV A, R0
+0191 F590            103                     MOV P1, A
+0193 EC              104                     MOV A, R4
+0194 93              105                     MOVC A, @A+DPTR
+0195 F5B0            106                     MOV P3, A
+0197 E8              107                     MOV A, R0
+0198 23              108                     RL A
+0199 F8              109                     MOV R0, A
+019A 22              110     RET
+019B                 111     LOAD3:
+A51 MACRO ASSEMBLER  DIGITALCLOCK                                                         07/10/2022 14:05:17 PAGE     3
+
+019B 901000          112                     MOV DPTR, #1000H
+019E E8              113                     MOV A, R0
+019F F590            114                     MOV P1, A
+01A1 EB              115                     MOV A, R3
+01A2 93              116                     MOVC A, @A+DPTR
+01A3 F5B0            117                     MOV P3, A
+01A5 E8              118                     MOV A, R0
+01A6 23              119                     RL A
+01A7 F8              120                     MOV R0, A
+01A8 22              121     RET
+01A9                 122     LOAD2:
+01A9 901000          123                     MOV DPTR, #1000H
+01AC E8              124                     MOV A, R0
+01AD F590            125                     MOV P1, A
+01AF EA              126                     MOV A, R2
+01B0 93              127                     MOVC A, @A+DPTR
+01B1 F5B0            128                     MOV P3, A
+01B3 E8              129                     MOV A, R0
+01B4 23              130                     RL A
+01B5 F8              131                     MOV R0, A
+01B6 22              132     RET
+01B7                 133     LOAD1:
+01B7 901000          134                     MOV DPTR, #1000H
+01BA E8              135                     MOV A, R0
+01BB F590            136                     MOV P1, A
+01BD E9              137                     MOV A, R1
+01BE 93              138                     MOVC A, @A+DPTR
+01BF F5B0            139                     MOV P3, A
+01C1 E8              140                     MOV A, R0
+01C2 23              141                     RL A
+01C3 F8              142                     MOV R0, A
+01C4 22              143     RET
+                     144                             
+                     145             ;7 Segment display encoded data for 0 to 9 without '.'
+1000                 146     ORG 1000H
+1000 C0F9A4B0        147                     DB 0C0H, 0F9H, 0A4H, 0B0H, 99H, 92H, 82H, 0F8H, 80H, 98H
+1004 999282F8                
+1008 8098                    
+                     148             ;7 Segment display encoded data for 0 to 9 with '.'
+2000                 149     ORG 2000H
+2000 40792430        150                     DB 40H, 79H, 24H, 30H, 19H, 12H, 02H, 78H, 00H, 18H
+2004 19120278                
+2008 0018                    
+                     151             ;End of the code 
+                     152     END
+A51 MACRO ASSEMBLER  DIGITALCLOCK                                                         07/10/2022 14:05:17 PAGE     4
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+B. . . . . . . . .  D ADDR   00F0H   A   
+CHANGE . . . . . .  C ADDR   018DH   A   
+DELAY. . . . . . .  C ADDR   0144H   A   
+DELAY2 . . . . . .  C ADDR   0167H   A   
+HERE . . . . . . .  C ADDR   014FH   A   
+HERE1. . . . . . .  C ADDR   0172H   A   
+LOAD . . . . . . .  C ADDR   0112H   A   
+LOAD1. . . . . . .  C ADDR   01B7H   A   
+LOAD2. . . . . . .  C ADDR   01A9H   A   
+LOAD3. . . . . . .  C ADDR   019BH   A   
+LOAD4. . . . . . .  C ADDR   017AH   A   
+MAIN . . . . . . .  C ADDR   0100H   A   
+MINUTE . . . . . .  C ADDR   0117H   A   
+P1 . . . . . . . .  D ADDR   0090H   A   
+P3 . . . . . . . .  D ADDR   00B0H   A   
+SECOND . . . . . .  C ADDR   0119H   A   
+SKIP . . . . . . .  C ADDR   0137H   A   
+SKIP1. . . . . . .  C ADDR   0190H   A   
+START. . . . . . .  C ADDR   0115H   A   
+TF0. . . . . . . .  B ADDR   0088H.5 A   
+TF1. . . . . . . .  B ADDR   0088H.7 A   
+TH0. . . . . . . .  D ADDR   008CH   A   
+TH1. . . . . . . .  D ADDR   008DH   A   
+TL0. . . . . . . .  D ADDR   008AH   A   
+TL1. . . . . . . .  D ADDR   008BH   A   
+TMOD . . . . . . .  D ADDR   0089H   A   
+TR0. . . . . . . .  B ADDR   0088H.4 A   
+TR1. . . . . . . .  B ADDR   0088H.6 A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)
